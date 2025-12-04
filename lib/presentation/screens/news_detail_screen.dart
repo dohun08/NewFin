@@ -6,8 +6,9 @@ import '../../data/models/article_model.dart';
 import '../../data/models/financial_term_model.dart';
 import '../../data/datasources/remote/gemini_service.dart';
 import '../../data/datasources/local/database_helper.dart';
-import '../../data/repositories/mission_repository.dart';
 import '../providers/providers.dart';
+import '../providers/coin_provider.dart';
+import '../providers/stats_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 
@@ -48,7 +49,6 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
       );
       
       // 읽은 뉴스 개수 확인 후 미션 업데이트
-      final readCount = await db.getReadNewsIds().then((ids) => ids.length);
       final todayReadCount = await _getTodayReadCount();
       
       if (todayReadCount >= 2) {
@@ -56,6 +56,28 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
         await missionRepo.updateNewsReadMission(todayReadCount);
         ref.invalidate(todayMissionProvider); // 미션 상태 새로고침
       }
+
+      // 💰 코인 적립 (오늘 읽은 뉴스 5개 이하만 적립)
+      if (todayReadCount <= 5) {
+        final coinActions = ref.read(coinActionsProvider);
+        await coinActions.addCoins(
+          amount: 20,
+          description: '📰 뉴스 읽기',
+        );
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('💰 +20 NC 적립! (오늘 $todayReadCount/5개)'),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+      
+      // 📊 통계 업데이트
+      ref.read(statsProvider.notifier).refresh();
     } catch (e) {
       // 읽음 처리 실패 시 무시
     }
@@ -78,6 +100,9 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
     try {
       final db = DatabaseHelper();
       await db.saveLearnedTerm(term.term, term.definition, term.example);
+      
+      // 📊 통계 업데이트
+      ref.read(statsProvider.notifier).refresh();
     } catch (e) {
       // 이미 저장된 용어일 수 있음 (UNIQUE 제약) - 무시
     }
@@ -298,7 +323,6 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
     int processedLength = 0;
 
     while (remainingText.isNotEmpty && processedLength < content.length) {
-      bool foundTerm = false;
       FinancialTermModel? foundTermModel;
       int foundIndex = -1;
       
@@ -339,7 +363,6 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
         
         remainingText = remainingText.substring(termText.length);
         processedLength += termText.length;
-        foundTerm = true;
       } else if (foundIndex > 0 && foundTermModel != null) {
         // 다음 용어까지의 일반 텍스트
         spans.add(TextSpan(

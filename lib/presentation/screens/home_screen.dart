@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/theme/app_theme.dart';
 import '../widgets/today_mission_card.dart';
 import '../widgets/grass_calendar.dart';
@@ -21,10 +19,6 @@ class HomeScreen extends ConsumerWidget {
 
             // User Greeting Section
             const _UserGreetingCard(),
-            const SizedBox(height: 24),
-
-            // Welcome Message
-            const _WelcomeMessage(),
             const SizedBox(height: 24),
 
             // 오늘의 미션 카드
@@ -91,52 +85,6 @@ class _UserGreetingCard extends StatelessWidget {
                       ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WelcomeMessage extends StatelessWidget {
-  const _WelcomeMessage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.highlightColor.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.accentColor.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppTheme.accentColor.withOpacity(0.3),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.lightbulb_rounded,
-              color: AppTheme.secondaryColor,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              '안녕! 오늘도 금융 지식을 쌓아볼까?',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
             ),
           ),
         ],

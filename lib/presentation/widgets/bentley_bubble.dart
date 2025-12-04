@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/theme/app_theme.dart';
 
 class BentleyBubble extends StatelessWidget {
@@ -98,10 +97,18 @@ class BentleyBubble extends StatelessWidget {
       child: ClipOval(
         child: Padding(
           padding: const EdgeInsets.all(4),
-          child: SvgPicture.asset(
-            'assets/bentley.svg',
-            fit: BoxFit.contain,
-          ),
+          child: Image.asset(
+                  'assets/bentley.png',
+                  width: 36,
+                  height: 36,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const CircleAvatar(
+                      backgroundColor: Color(0xFF8B4513),
+                      child: Text('🐻', style: TextStyle(fontSize: 20)),
+                    );
+                  },
+                ),
         ),
       ),
     );

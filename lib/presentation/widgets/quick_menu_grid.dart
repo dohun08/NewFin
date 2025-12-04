@@ -48,9 +48,7 @@ class QuickMenuGrid extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const ReadNewsScreen(),
-              ),
+              MaterialPageRoute(builder: (context) => const ReadNewsScreen()),
             );
           },
         ),
@@ -119,15 +117,8 @@ class QuickMenuGrid extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  icon,
-                  style: const TextStyle(fontSize: 24),
-                ),
-                const Icon(
-                  Icons.arrow_forward,
-                  color: Colors.white,
-                  size: 18,
-                ),
+                Text(icon, style: const TextStyle(fontSize: 24)),
+                const Icon(Icons.arrow_forward, color: Colors.white, size: 18),
               ],
             ),
             Column(

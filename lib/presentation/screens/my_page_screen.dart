@@ -5,6 +5,7 @@ import '../../data/models/daily_mission_model.dart';
 import '../../core/utils/streak_calculator.dart';
 import '../widgets/profile_card.dart';
 import '../widgets/quick_menu_grid.dart';
+import '../providers/stats_provider.dart';
 
 class MyPageScreen extends ConsumerStatefulWidget {
   const MyPageScreen({super.key});
@@ -14,8 +15,6 @@ class MyPageScreen extends ConsumerStatefulWidget {
 }
 
 class _MyPageScreenState extends ConsumerState<MyPageScreen> {
-  int _readNewsCount = 0;
-  int _learnedTermsCount = 0;
   int _currentStreak = 0;
   bool _isLoading = true;
 
@@ -31,8 +30,6 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
     });
 
     final db = DatabaseHelper();
-    final readCount = await db.getReadNewsCount();
-    final termsCount = await db.getLearnedTermsCount();
     final allMissionsMap = await db.getAllMissions();
     final allMissions = allMissionsMap.map((data) {
       return DailyMissionModel(
@@ -50,8 +47,6 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
     final currentStreak = StreakCalculator.calculateCurrentStreak(allMissions);
 
     setState(() {
-      _readNewsCount = readCount;
-      _learnedTermsCount = termsCount;
       _currentStreak = currentStreak;
       _isLoading = false;
     });
@@ -59,6 +54,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final statsAsync = ref.watch(statsProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -72,7 +68,10 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadStats,
+              onRefresh: () async {
+                await _loadStats();
+                ref.read(statsProvider.notifier).refresh();
+              },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
@@ -80,10 +79,22 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 1. 프로필 카드
-                    ProfileCard(
-                      streak: _currentStreak,
-                      learnedWords: _learnedTermsCount,
-                      readNews: _readNewsCount,
+                    statsAsync.when(
+                      data: (stats) => ProfileCard(
+                        streak: _currentStreak,
+                        learnedWords: stats.learnedTermsCount,
+                        readNews: stats.readNewsCount,
+                      ),
+                      loading: () => ProfileCard(
+                        streak: _currentStreak,
+                        learnedWords: 0,
+                        readNews: 0,
+                      ),
+                      error: (_, __) => ProfileCard(
+                        streak: _currentStreak,
+                        learnedWords: 0,
+                        readNews: 0,
+                      ),
                     ),
                     
                     const SizedBox(height: 16),
@@ -97,9 +108,19 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    QuickMenuGrid(
-                      learnedWords: _learnedTermsCount,
-                      readNews: _readNewsCount,
+                    statsAsync.when(
+                      data: (stats) => QuickMenuGrid(
+                        learnedWords: stats.learnedTermsCount,
+                        readNews: stats.readNewsCount,
+                      ),
+                      loading: () => const QuickMenuGrid(
+                        learnedWords: 0,
+                        readNews: 0,
+                      ),
+                      error: (_, __) => const QuickMenuGrid(
+                        learnedWords: 0,
+                        readNews: 0,
+                      ),
                     ),
                    
                     const SizedBox(height: 32),

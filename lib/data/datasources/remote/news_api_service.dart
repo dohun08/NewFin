@@ -95,14 +95,14 @@ class NewsApiService {
 
   Future<List<ArticleModel>> fetchBusinessNews({int page = 1}) async {
     try {
-      final now = DateTime.now();
-      final sevenDaysAgo = now.subtract(const Duration(days: 7));
-
-      final dateFrom = sevenDaysAgo.toIso8601String().split('T').first;
-      final dateTo = now.toIso8601String().split('T').first;
+      // 날짜 범위 설정 (최근 7일) - 현재 미사용
+      // final now = DateTime.now();
+      // final sevenDaysAgo = now.subtract(const Duration(days: 7));
+      // final dateFrom = sevenDaysAgo.toIso8601String().split('T').first;
+      // final dateTo = now.toIso8601String().split('T').first;
 
       // API 요청 URL 로그
-      final url = '/news/all?language=ko&search=금리&limit=5&page=$page&sort=published_on&sort_order=desc&api_token=${ApiConstants.marketauxApiKey}';
+      final url = '/news/all?language=ko&search=금리&limit=3&page=$page&sort=published_on&sort_order=desc&api_token=${ApiConstants.marketauxApiKey}';
       print('[API] 📡 요청 URL: ${ApiConstants.marketauxApiUrl}$url');
       print('[API] 📄 페이지: $page');
 
@@ -111,7 +111,7 @@ class NewsApiService {
         queryParameters: {
           'language': 'ko',
           'search': '금리',
-          'limit': 5,
+          'limit': 3,
           'page': page,
           'sort': 'published_on', // 최신순 정렬
           'sort_order': 'desc', // 내림차순

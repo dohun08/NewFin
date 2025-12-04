@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/providers.dart';
 import '../widgets/bentley_bubble.dart';
-import '../../data/models/quiz_model.dart';
 
 class QuizScreen extends ConsumerStatefulWidget {
   final String newsId;

@@ -16,40 +16,47 @@ import '../../data/models/daily_mission_model.dart';
 // Core Providers
 final dioProvider = Provider((ref) {
   final dio = Dio();
-  dio.interceptors.add(LogInterceptor(
-    requestBody: true,
-    responseBody: true,
-  ));
+  dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
   return dio;
 });
 final databaseHelperProvider = Provider((ref) => DatabaseHelper());
 
 // Service Providers
-final newsApiServiceProvider = Provider((ref) => NewsApiService(dio: ref.watch(dioProvider)));
+final newsApiServiceProvider = Provider(
+  (ref) => NewsApiService(dio: ref.watch(dioProvider)),
+);
 final geminiServiceProvider = Provider((ref) => GeminiService());
-final publicDataServiceProvider = Provider((ref) => PublicDataService(dio: ref.watch(dioProvider)));
+final publicDataServiceProvider = Provider(
+  (ref) => PublicDataService(dio: ref.watch(dioProvider)),
+);
 
 // Repository Providers
-final newsRepositoryProvider = Provider((ref) => NewsRepositoryImpl(
-  newsApiService: ref.watch(newsApiServiceProvider),
-  geminiService: ref.watch(geminiServiceProvider),
-  databaseHelper: ref.watch(databaseHelperProvider),
-));
+final newsRepositoryProvider = Provider(
+  (ref) => NewsRepositoryImpl(
+    newsApiService: ref.watch(newsApiServiceProvider),
+    geminiService: ref.watch(geminiServiceProvider),
+    databaseHelper: ref.watch(databaseHelperProvider),
+  ),
+);
 
-final termRepositoryProvider = Provider((ref) => TermRepositoryImpl(
-  publicDataService: ref.watch(publicDataServiceProvider),
-  geminiService: ref.watch(geminiServiceProvider),
-  databaseHelper: ref.watch(databaseHelperProvider),
-));
+final termRepositoryProvider = Provider(
+  (ref) => TermRepositoryImpl(
+    publicDataService: ref.watch(publicDataServiceProvider),
+    geminiService: ref.watch(geminiServiceProvider),
+    databaseHelper: ref.watch(databaseHelperProvider),
+  ),
+);
 
-final quizRepositoryProvider = Provider((ref) => QuizRepositoryImpl(
-  geminiService: ref.watch(geminiServiceProvider),
-  databaseHelper: ref.watch(databaseHelperProvider),
-));
+final quizRepositoryProvider = Provider(
+  (ref) => QuizRepositoryImpl(
+    geminiService: ref.watch(geminiServiceProvider),
+    databaseHelper: ref.watch(databaseHelperProvider),
+  ),
+);
 
-final missionRepositoryProvider = Provider((ref) => MissionRepository(
-  ref.watch(databaseHelperProvider),
-));
+final missionRepositoryProvider = Provider(
+  (ref) => MissionRepository(ref.watch(databaseHelperProvider)),
+);
 
 // Feature Providers
 
@@ -60,7 +67,10 @@ final newsListProvider = FutureProvider<List<ArticleModel>>((ref) async {
 });
 
 // Term Definition
-final termProvider = FutureProvider.family<TermModel, String>((ref, term) async {
+final termProvider = FutureProvider.family<TermModel, String>((
+  ref,
+  term,
+) async {
   final repository = ref.watch(termRepositoryProvider);
   return await repository.getTermDefinition(term);
 });
@@ -71,18 +81,26 @@ final todayMissionProvider = FutureProvider<DailyMissionModel>((ref) async {
   return await repository.getTodayMission();
 });
 
-final recentMissionsProvider = FutureProvider<List<DailyMissionModel>>((ref) async {
+final recentMissionsProvider = FutureProvider<List<DailyMissionModel>>((
+  ref,
+) async {
   final repository = ref.watch(missionRepositoryProvider);
   return await repository.getRecentMissions(28); // 최근 4주
 });
 
-final allMissionsProvider = FutureProvider<List<DailyMissionModel>>((ref) async {
+final allMissionsProvider = FutureProvider<List<DailyMissionModel>>((
+  ref,
+) async {
   final repository = ref.watch(missionRepositoryProvider);
   return await repository.getAllMissions();
 });
 
 // Quiz
-final quizProvider = FutureProvider.family<List<QuizModel>, ({String newsId, String summary})>((ref, params) async {
-  final repository = ref.watch(quizRepositoryProvider);
-  return await repository.getQuiz(params.newsId, params.summary);
-});
+final quizProvider =
+    FutureProvider.family<List<QuizModel>, ({String newsId, String summary})>((
+      ref,
+      params,
+    ) async {
+      final repository = ref.watch(quizRepositoryProvider);
+      return await repository.getQuiz(params.newsId, params.summary);
+    });

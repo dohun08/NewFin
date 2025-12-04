@@ -4,6 +4,7 @@ import '../../data/datasources/local/database_helper.dart';
 import '../../data/models/daily_mission_model.dart';
 import '../../core/utils/streak_calculator.dart';
 import '../providers/providers.dart';
+import '../providers/stats_provider.dart';
 import '../widgets/weekly_progress_card.dart';
 import '../widgets/badge_section.dart';
 import '../widgets/monthly_grass_calendar.dart';
@@ -17,8 +18,6 @@ class LearningStatsScreen extends ConsumerStatefulWidget {
 }
 
 class _LearningStatsScreenState extends ConsumerState<LearningStatsScreen> {
-  int _learnedTermsCount = 0;
-  int _readNewsCount = 0;
   int _currentStreak = 0;
   int _maxStreak = 0;
   bool _isLoading = true;
@@ -35,8 +34,6 @@ class _LearningStatsScreenState extends ConsumerState<LearningStatsScreen> {
     });
 
     final db = DatabaseHelper();
-    final termsCount = await db.getLearnedTermsCount();
-    final newsCount = await db.getReadNewsCount();
     final allMissionsMap = await db.getAllMissions();
     final allMissions = allMissionsMap.map((data) {
       return DailyMissionModel(
@@ -55,8 +52,6 @@ class _LearningStatsScreenState extends ConsumerState<LearningStatsScreen> {
     final maxStreak = StreakCalculator.calculateMaxStreak(allMissions);
 
     setState(() {
-      _learnedTermsCount = termsCount;
-      _readNewsCount = newsCount;
       _currentStreak = currentStreak;
       _maxStreak = maxStreak;
       _isLoading = false;
@@ -66,6 +61,7 @@ class _LearningStatsScreenState extends ConsumerState<LearningStatsScreen> {
   @override
   Widget build(BuildContext context) {
     final weekMissionsAsync = ref.watch(recentMissionsProvider);
+    final statsAsync = ref.watch(statsProvider);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -111,11 +107,25 @@ class _LearningStatsScreenState extends ConsumerState<LearningStatsScreen> {
                     const SizedBox(height: 16),
 
                     // 배지 섹션
-                    BadgeSection(
-                      currentStreak: _currentStreak,
-                      maxStreak: _maxStreak,
-                      learnedWords: _learnedTermsCount,
-                      readNews: _readNewsCount,
+                    statsAsync.when(
+                      data: (stats) => BadgeSection(
+                        currentStreak: _currentStreak,
+                        maxStreak: _maxStreak,
+                        learnedWords: stats.learnedTermsCount,
+                        readNews: stats.readNewsCount,
+                      ),
+                      loading: () => BadgeSection(
+                        currentStreak: _currentStreak,
+                        maxStreak: _maxStreak,
+                        learnedWords: 0,
+                        readNews: 0,
+                      ),
+                      error: (_, __) => BadgeSection(
+                        currentStreak: _currentStreak,
+                        maxStreak: _maxStreak,
+                        learnedWords: 0,
+                        readNews: 0,
+                      ),
                     ),
 
                     const SizedBox(height: 32),

@@ -20,72 +20,82 @@ class NewsListNotifier extends StateNotifier<AsyncValue<List<ArticleModel>>> {
     if (!_hasMore) return;
 
     state = const AsyncValue.loading();
-    print('[UI] 🔄 초기 로딩 시작...');
+    print('[NewsListNotifier] Initial load: page $_startPage');
 
     try {
       final articles = await repository.getNews(page: _startPage);
-      print('[UI] ✅ 초기 로딩 완료: ${articles.length}개');
-      
+      print('[NewsListNotifier] Initial load: ${articles.length} articles');
+
       state = AsyncValue.data(articles);
 
-      // 5개 미만이면 더 이상 없음
-      if (articles.length < 5) {
+      // 3개 미만이면 더 이상 없음
+      if (articles.length < 3) {
         _hasMore = false;
-        print('[UI] ⛔ 더 이상 불러올 뉴스 없음 (${articles.length}개 < 5개)');
+        print('[NewsListNotifier] No more articles available');
       } else {
-        // 다음 번 시작 페이지 업데이트
         _startPage += 1;
-        print('[UI] 📄 다음 시작 페이지: $_startPage');
+        print('[NewsListNotifier] Next page will be: $_startPage');
       }
     } catch (e, stack) {
-      print('[UI] ❌ 초기 로딩 에러: $e');
       state = AsyncValue.error(e, stack);
     }
   }
 
   Future<void> loadMore() async {
-    if (!_hasMore || _isLoadingMore) {
-      print('[UI] ⏸️ 추가 로딩 스킵 (hasMore: $_hasMore, isLoading: $_isLoadingMore)');
-      return;
-    }
+    if (!_hasMore || _isLoadingMore) return;
 
     _isLoadingMore = true;
-    state = state; // 상태 업데이트를 위해 재할당
-    
+
     final currentArticles = state.value ?? [];
-    print('[UI] 🔄 추가 로딩 시작... 현재: ${currentArticles.length}개, 시작 페이지: $_startPage');
+    print('[NewsListNotifier] Loading more: page $_startPage...');
+
+    // 현재 표시된 뉴스 ID 목록
+    final currentIds = currentArticles.map((a) => a.id).toList();
+    print('[NewsListNotifier] Current articles IDs: ${currentIds.length}개');
 
     try {
-      final newArticles = await repository.getNews(page: _startPage);
-      print('[UI] ✅ 추가 로딩 완료: ${newArticles.length}개');
+      final newArticles = await repository.getNews(
+        page: _startPage,
+        excludeIds: currentIds,
+      );
+      print('[NewsListNotifier] Loaded ${newArticles.length} new articles');
 
-      // 5개 미만이면 더 이상 없음
-      if (newArticles.length < 5) {
+      if (newArticles.length < 3) {
         _hasMore = false;
-        print('[UI] ⛔ 더 이상 불러올 뉴스 없음 (${newArticles.length}개 < 5개)');
+        print('[NewsListNotifier] No more articles available');
       } else {
-        // 다음 번 시작 페이지 업데이트
         _startPage += 1;
-        print('[UI] 📄 다음 시작 페이지: $_startPage');
+        print('[NewsListNotifier] Next page will be: $_startPage');
       }
 
       if (newArticles.isNotEmpty) {
         state = AsyncValue.data([...currentArticles, ...newArticles]);
-        print('[UI] 📊 총 뉴스: ${currentArticles.length + newArticles.length}개');
+        print(
+          '[NewsListNotifier] Total articles now: ${currentArticles.length + newArticles.length}',
+        );
+      } else {
+        print('[NewsListNotifier] No new articles to add');
       }
     } catch (e) {
-      print('[UI] ❌ 추가 로딩 에러: $e');
+      print('[NewsListNotifier] Error loading more: $e');
     } finally {
       _isLoadingMore = false;
     }
   }
 
   void refresh() {
-    print('[UI] 🔄 새로고침...');
     _startPage = 1;
     _hasMore = true;
     _isLoadingMore = false;
     loadNews();
+  }
+
+  // 수동으로 뉴스 추가
+  void addManualNews(ArticleModel article) {
+    final currentArticles = state.value ?? [];
+    // 맨 앞에 추가
+    state = AsyncValue.data([article, ...currentArticles]);
+    print('[NewsListNotifier] Manual news added: ${article.title}');
   }
 
   bool get isLoadingMore => _isLoadingMore;
@@ -110,6 +120,99 @@ class NewsListScreen extends ConsumerStatefulWidget {
 class _NewsListScreenState extends ConsumerState<NewsListScreen> {
   final ScrollController _scrollController = ScrollController();
 
+  Future<void> _showAddNewsDialog() async {
+    final textController = TextEditingController();
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('뉴스 붙여넣기'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '뉴스 원문 텍스트를 붙여넣으세요',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: textController,
+                maxLines: 10,
+                decoration: const InputDecoration(
+                  hintText: '뉴스 텍스트를 여기에 붙여넣으세요...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (textController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('텍스트를 입력해주세요')));
+                return;
+              }
+
+              final text = textController.text.trim();
+              final navigator = Navigator.of(context);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+              // 입력 다이얼로그 닫기
+              navigator.pop();
+
+              // 로딩 다이얼로그 표시
+              navigator.push(
+                PageRouteBuilder(
+                  opaque: false,
+                  barrierDismissible: false,
+                  pageBuilder: (_, __, ___) =>
+                      const Center(child: CircularProgressIndicator()),
+                ),
+              );
+
+              try {
+                final repository = ref.read(newsRepositoryProvider);
+                final article = await repository.addManualNews(text);
+
+                // 로딩 다이얼로그 닫기
+                navigator.pop();
+
+                // 뉴스 리스트에 추가
+                ref
+                    .read(newsListNotifierProvider.notifier)
+                    .addManualNews(article);
+
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ 뉴스가 추가되었습니다!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                // 로딩 다이얼로그 닫기
+                navigator.pop();
+
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text('❌ 뉴스 추가 실패: $e')),
+                );
+              }
+            },
+            child: const Text('추가'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -123,9 +226,17 @@ class _NewsListScreenState extends ConsumerState<NewsListScreen> {
   }
 
   void _onScroll() {
+    final notifier = ref.read(newsListNotifierProvider.notifier);
+
+    // 이미 로딩 중이거나 더 이상 없으면 리턴
+    if (notifier.isLoadingMore || !notifier.hasMore) {
+      return;
+    }
+
+    // 하단 근처에 도달하면 더 불러오기
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      ref.read(newsListNotifierProvider.notifier).loadMore();
+      notifier.loadMore();
     }
   }
 
@@ -134,91 +245,110 @@ class _NewsListScreenState extends ConsumerState<NewsListScreen> {
     final newsAsyncValue = ref.watch(newsListNotifierProvider);
     final notifier = ref.read(newsListNotifierProvider.notifier);
 
-    return newsAsyncValue.when(
-      data: (articles) {
-        if (articles.isEmpty) {
-          return const Center(
-            child: Text(
-              '모든 뉴스를 다 읽으셨어요!\n새로운 뉴스를 기다려주세요 📰',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddNewsDialog,
+        icon: const Icon(Icons.add),
+        label: const Text('뉴스 추가'),
+        backgroundColor: Theme.of(context).primaryColor,
+      ),
+      body: newsAsyncValue.when(
+        data: (articles) {
+          if (articles.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '모든 뉴스를 다 읽으셨어요!\n새로운 뉴스를 기다려주세요 📰',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _showAddNewsDialog,
+                    icon: const Icon(Icons.add),
+                    label: const Text('뉴스 직접 추가하기'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.read(newsListNotifierProvider.notifier).refresh();
+            },
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16.0),
+              itemCount: articles.length + 1,
+              itemBuilder: (context, index) {
+                if (index == articles.length) {
+                  // 하단 로딩 인디케이터
+                  if (notifier.isLoadingMore) {
+                    return Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  } else if (notifier.hasMore) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: notifier.isLoadingMore
+                            ? Column(
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    '더 불러오는 중...',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                '스크롤하여 더 불러오기...',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                      ),
+                    );
+                  } else {
+                    return Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text(
+                          '모든 뉴스를 불러왔습니다',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    );
+                  }
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: NewsCard(article: articles[index]),
+                );
+              },
             ),
           );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () async {
-            ref.read(newsListNotifierProvider.notifier).refresh();
-          },
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.all(16.0),
-            itemCount: articles.length + 1,
-            itemBuilder: (context, index) {
-              if (index == articles.length) {
-                // 하단 로딩 인디케이터
-                if (notifier.isLoadingMore) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                } else if (notifier.hasMore) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: notifier.isLoadingMore
-                          ? const Column(
-                              children: [
-                                CircularProgressIndicator(),
-                                SizedBox(height: 8),
-                                Text(
-                                  '더 불러오는 중...',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              ],
-                            )
-                          : const Text(
-                              '스크롤하여 더 불러오기...',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                    ),
-                  );
-                } else {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text(
-                        '모든 뉴스를 불러왔습니다',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  );
-                }
-              }
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: NewsCard(article: articles[index]),
-              );
-            },
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Error: $err'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  ref.read(newsListNotifierProvider.notifier).refresh();
+                },
+                child: const Text('다시 시도'),
+              ),
+            ],
           ),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Error: $err'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(newsListNotifierProvider.notifier).refresh();
-              },
-              child: const Text('다시 시도'),
-            ),
-          ],
         ),
       ),
     );

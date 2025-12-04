@@ -1,6 +1,5 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import '../../models/article_model.dart';
 import '../../models/term_model.dart';
 import '../../models/quiz_model.dart';
 import 'dart:convert';
@@ -25,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5, // 버전 업그레이드 (daily_missions 추가)
+      version: 8, // 버전 업그레이드 (챗봇 시스템 추가)
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -147,6 +146,118 @@ class DatabaseHelper {
       ''');
       
       await db.execute('CREATE INDEX IF NOT EXISTS idx_mission_date ON daily_missions(date)');
+    }
+    
+    if (oldVersion < 6) {
+      // 코인 거래 내역 테이블
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS coin_transactions(
+          id TEXT PRIMARY KEY,
+          amount INTEGER NOT NULL,
+          type TEXT NOT NULL,
+          description TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      
+      // 투자 기록 테이블
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS investments(
+          id TEXT PRIMARY KEY,
+          investment_type TEXT NOT NULL,
+          symbol TEXT NOT NULL,
+          buy_price REAL NOT NULL,
+          buy_amount REAL NOT NULL,
+          buy_coin_amount INTEGER NOT NULL,
+          buy_date TEXT NOT NULL,
+          sell_price REAL,
+          sell_coin_amount INTEGER,
+          sell_date TEXT,
+          status TEXT NOT NULL
+        )
+      ''');
+      
+      // 포트폴리오 테이블
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS portfolio(
+          id INTEGER PRIMARY KEY,
+          total_coins INTEGER DEFAULT 0,
+          invested_amount INTEGER DEFAULT 0,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+      
+      // 초기 코인 지급 (1000 NC)
+      await db.insert('portfolio', {
+        'id': 1,
+        'total_coins': 1000,
+        'invested_amount': 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      
+      await db.insert('coin_transactions', {
+        'id': 'welcome-bonus',
+        'amount': 1000,
+        'type': 'earn',
+        'description': '🎉 환영 보너스',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    }
+    
+    if (oldVersion < 7) {
+      // 주식 테이블
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS stocks(
+          symbol TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          current_price INTEGER NOT NULL,
+          previous_close INTEGER NOT NULL,
+          change_rate REAL NOT NULL,
+          volume INTEGER NOT NULL,
+          last_updated TEXT NOT NULL
+        )
+      ''');
+    }
+    
+    if (oldVersion < 8) {
+      // 채팅 메시지 테이블
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id INTEGER,
+          role TEXT NOT NULL,
+          content TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          feedback INTEGER DEFAULT 0
+        )
+      ''');
+      
+      // 채팅 세션 테이블
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS chat_sessions(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          start_time INTEGER NOT NULL,
+          end_time INTEGER,
+          message_count INTEGER DEFAULT 0
+        )
+      ''');
+      
+      // 인덱스 생성
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_messages(session_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_chat_timestamp ON chat_messages(timestamp DESC)');
+      
+      // 초기 세션 및 환영 메시지 생성
+      final sessionId = await db.insert('chat_sessions', {
+        'start_time': DateTime.now().millisecondsSinceEpoch,
+        'message_count': 1,
+      });
+      
+      await db.insert('chat_messages', {
+        'session_id': sessionId,
+        'role': 'assistant',
+        'content': '안녕! 나는 벤틀리야 🐻\n금융이 어렵다고? 걱정 마! 뭐든 물어봐! 😊',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
     }
   }
 
