@@ -92,7 +92,6 @@ class _StockInvestmentScreenState extends ConsumerState<StockInvestmentScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(stocksProvider);
-          ref.invalidate(portfolioProvider);
           ref.invalidate(myInvestmentsProvider);
         },
         child: stocksAsync.when(
@@ -561,13 +560,12 @@ class _StockInvestmentScreenState extends ConsumerState<StockInvestmentScreen> {
                 // 주식 매도
                 await stockRepo.sellStock(investment.id);
 
-                // 코인 회수
-                await coinRepo.addCoins(
+                // 코인 회수 (invested_amount 감소 + total_coins 증가)
+                await coinRepo.retrieveInvestment(
                   amount: sellAmount,
-                  description: '${stock.name} ${quantity}주 매도',
+                  investmentId: investment.id,
                 );
 
-                ref.invalidate(portfolioProvider);
                 ref.read(totalCoinsProvider.notifier).refresh();
                 ref.invalidate(myInvestmentsProvider);
 
@@ -657,12 +655,18 @@ class _StockInvestmentScreenState extends ConsumerState<StockInvestmentScreen> {
               }
 
               final totalCost = stock.currentPrice * quantity;
-              final portfolio = await ref.read(portfolioProvider.future);
+              final totalCoinsAsync = ref.read(totalCoinsProvider);
+              
+              final totalCoins = totalCoinsAsync.when(
+                data: (coins) => coins,
+                loading: () => 0,
+                error: (_, __) => 0,
+              );
 
-              if (portfolio.availableCoins < totalCost) {
+              if (totalCoins < totalCost) {
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(SnackBar(content: Text('코인이 부족합니다')));
+                ).showSnackBar(SnackBar(content: Text('코인이 부족합니다 (보유: ${NumberFormat('#,###').format(totalCoins)} NC, 필요: ${NumberFormat('#,###').format(totalCost)} NC)')));
                 return;
               }
 
@@ -683,7 +687,6 @@ class _StockInvestmentScreenState extends ConsumerState<StockInvestmentScreen> {
                   investmentId: investment.id,
                 );
 
-                ref.invalidate(portfolioProvider);
                 ref.read(totalCoinsProvider.notifier).refresh();
                 ref.invalidate(myInvestmentsProvider);
 

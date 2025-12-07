@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/models/article_model.dart';
 import '../../data/repositories/news_repository_impl.dart';
 import '../providers/providers.dart';
@@ -122,93 +123,187 @@ class _NewsListScreenState extends ConsumerState<NewsListScreen> {
 
   Future<void> _showAddNewsDialog() async {
     final textController = TextEditingController();
+    final urlController = TextEditingController();
+    int selectedTab = 0; // 0: URL, 1: 텍스트
 
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('뉴스 붙여넣기'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '뉴스 원문 텍스트를 붙여넣으세요',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: textController,
-                maxLines: 10,
-                decoration: const InputDecoration(
-                  hintText: '뉴스 텍스트를 여기에 붙여넣으세요...',
-                  border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('뉴스 추가하기'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 탭 선택
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('URL'),
+                        selected: selectedTab == 0,
+                        onSelected: (selected) {
+                          if (selected) setState(() => selectedTab = 0);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('텍스트'),
+                        selected: selectedTab == 1,
+                        onSelected: (selected) {
+                          if (selected) setState(() => selectedTab = 1);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+
+                // URL 탭
+                if (selectedTab == 0) ...[
+                  const Text(
+                    '뉴스 원문 링크를 입력하세요',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: urlController,
+                    decoration: const InputDecoration(
+                      hintText: 'https://...',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.link),
+                    ),
+                    keyboardType: TextInputType.url,
+                  ),
+                ]
+                // 텍스트 탭
+                else ...[
+                  const Text(
+                    '뉴스 원문 텍스트를 붙여넣으세요',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: textController,
+                    maxLines: 10,
+                    decoration: const InputDecoration(
+                      hintText: '뉴스 텍스트를 여기에 붙여넣으세요...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (textController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('텍스트를 입력해주세요')));
-                return;
-              }
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final navigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-              final text = textController.text.trim();
-              final navigator = Navigator.of(context);
-              final scaffoldMessenger = ScaffoldMessenger.of(context);
+                // URL 모드
+                if (selectedTab == 0) {
+                  final url = urlController.text.trim();
+                  if (url.isEmpty) {
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(content: Text('URL을 입력해주세요')),
+                    );
+                    return;
+                  }
 
-              // 입력 다이얼로그 닫기
-              navigator.pop();
+                  if (!url.startsWith('http')) {
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('올바른 URL을 입력해주세요 (http/https)'),
+                      ),
+                    );
+                    return;
+                  }
 
-              // 로딩 다이얼로그 표시
-              navigator.push(
-                PageRouteBuilder(
-                  opaque: false,
-                  barrierDismissible: false,
-                  pageBuilder: (_, __, ___) =>
-                      const Center(child: CircularProgressIndicator()),
-                ),
-              );
+                  // URL로 빈 뉴스 만들어서 상세 화면으로 이동 (거기서 크롤링)
+                  navigator.pop(); // 다이얼로그 닫기
 
-              try {
-                final repository = ref.read(newsRepositoryProvider);
-                final article = await repository.addManualNews(text);
+                  final emptyArticle = ArticleModel(
+                    id: 'manual_${DateTime.now().millisecondsSinceEpoch}',
+                    title: '외부 뉴스',
+                    content: '', // 빈 내용 - 상세화면에서 자동 크롤링
+                    url: url,
+                    imageUrl: '',
+                    publishedAt: DateTime.now(),
+                    terms: [],
+                  );
 
-                // 로딩 다이얼로그 닫기
+                  // GoRouter로 상세 화면 이동
+                  if (mounted) {
+                    context.push(
+                      '/news/${emptyArticle.id}',
+                      extra: emptyArticle,
+                    );
+                  }
+                  return;
+                }
+
+                // 텍스트 모드
+                if (textController.text.trim().isEmpty) {
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(content: Text('텍스트를 입력해주세요')),
+                  );
+                  return;
+                }
+
+                final text = textController.text.trim();
+
+                // 입력 다이얼로그 닫기
                 navigator.pop();
 
-                // 뉴스 리스트에 추가
-                ref
-                    .read(newsListNotifierProvider.notifier)
-                    .addManualNews(article);
-
-                scaffoldMessenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('✅ 뉴스가 추가되었습니다!'),
-                    backgroundColor: Colors.green,
+                // 로딩 다이얼로그 표시
+                navigator.push(
+                  PageRouteBuilder(
+                    opaque: false,
+                    barrierDismissible: false,
+                    pageBuilder: (_, __, ___) =>
+                        const Center(child: CircularProgressIndicator()),
                   ),
                 );
-              } catch (e) {
-                // 로딩 다이얼로그 닫기
-                navigator.pop();
 
-                scaffoldMessenger.showSnackBar(
-                  SnackBar(content: Text('❌ 뉴스 추가 실패: $e')),
-                );
-              }
-            },
-            child: const Text('추가'),
-          ),
-        ],
+                try {
+                  final repository = ref.read(newsRepositoryProvider);
+                  final article = await repository.addManualNews(text);
+
+                  // 로딩 다이얼로그 닫기
+                  navigator.pop();
+
+                  // 뉴스 리스트에 추가
+                  ref
+                      .read(newsListNotifierProvider.notifier)
+                      .addManualNews(article);
+
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ 뉴스가 추가되었습니다!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  // 로딩 다이얼로그 닫기
+                  navigator.pop();
+
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(content: Text('❌ 뉴스 추가 실패: $e')),
+                  );
+                }
+              },
+              child: Text(selectedTab == 0 ? '열기' : '추가'),
+            ),
+          ],
+        ),
       ),
     );
   }

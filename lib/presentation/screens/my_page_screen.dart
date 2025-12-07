@@ -6,6 +6,7 @@ import '../../core/utils/streak_calculator.dart';
 import '../widgets/profile_card.dart';
 import '../widgets/quick_menu_grid.dart';
 import '../providers/stats_provider.dart';
+import '../providers/coin_provider.dart';
 
 class MyPageScreen extends ConsumerStatefulWidget {
   const MyPageScreen({super.key});
@@ -17,6 +18,7 @@ class MyPageScreen extends ConsumerStatefulWidget {
 class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   int _currentStreak = 0;
   bool _isLoading = true;
+  bool _isResetting = false;
 
   @override
   void initState() {
@@ -128,6 +130,46 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                 ),
               ),
             ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _isResetting ? null : () async {
+          setState(() {
+            _isResetting = true;
+          });
+          
+          try {
+            final coinRepo = ref.read(coinRepositoryProvider);
+            await coinRepo.resetCoins(amount: 1000);
+            ref.read(totalCoinsProvider.notifier).refresh();
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('✅ 코인이 1000NC로 초기화되었습니다!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } finally {
+            if (mounted) {
+              setState(() {
+                _isResetting = false;
+              });
+            }
+          }
+        },
+        backgroundColor: _isResetting ? Colors.grey : null,
+        child: _isResetting 
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Icon(Icons.refresh),
+        tooltip: '코인 초기화 (1000NC)',
+      ),
     );
   }
 }

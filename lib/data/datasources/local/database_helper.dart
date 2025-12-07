@@ -31,10 +31,6 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    // 뉴스 테이블 제거 (더 이상 저장 안 함)
-    // await db.execute('''
-    //   CREATE TABLE articles(...)
-    // ''');
 
     await db.execute('''
       CREATE TABLE terms(

@@ -36,4 +36,7 @@ abstract class CoinRepository {
     required int amount,
     required String investmentId,
   });
+
+  /// 코인 초기화 (디버깅용)
+  Future<void> resetCoins({int amount = 1000});
 }
