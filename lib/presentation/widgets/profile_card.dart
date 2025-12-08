@@ -93,11 +93,11 @@ class ProfileCard extends StatelessWidget {
 
             // 주요 통계 3개
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildStatItem('🔥', streak.toString(), '연속 학습'),
                 _buildDivider(),
-                _buildStatItem('📚', learnedWords.toString(), '학습한 단어'),
+                _buildStatItem('📚', learnedWords.toString(), '학습 단어'),
                 _buildDivider(),
                 _buildStatItem('📰', readNews.toString(), '읽은 뉴스'),
               ],
@@ -129,25 +129,40 @@ class ProfileCard extends StatelessWidget {
   Widget _buildStatItem(String emoji, String value, String label) {
     return Expanded(
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(height: 8),
           Text(
-            value,
+            emoji,
             style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryColor,
+              fontSize: 24,
+              fontFamily: 'NotoColorEmoji',
+            ),
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryColor,
+              ),
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),

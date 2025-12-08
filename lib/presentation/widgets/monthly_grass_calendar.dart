@@ -49,40 +49,50 @@ class _MonthlyGrassCalendarState extends ConsumerState<MonthlyGrassCalendar> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Text(
-                      '🌱',
-                      style: TextStyle(fontSize: 20),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      '학습 잔디',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                const Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '🌱',
+                        style: TextStyle(fontSize: 18),
                       ),
-                    ),
-                  ],
+                      SizedBox(width: 6),
+                      Text(
+                        '학습 잔디',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       icon: const Icon(Icons.chevron_left),
                       onPressed: _previousMonth,
-                      iconSize: 20,
+                      iconSize: 18,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
+                    const SizedBox(width: 4),
                     Text(
                       '${_selectedMonth.year}년 ${_selectedMonth.month}월',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(width: 4),
                     IconButton(
                       icon: const Icon(Icons.chevron_right),
                       onPressed: _nextMonth,
-                      iconSize: 20,
+                      iconSize: 18,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),

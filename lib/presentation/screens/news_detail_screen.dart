@@ -248,16 +248,18 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('뉴스 상세'),
-        automaticallyImplyLeading: false,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: const Text('뉴스 상세'),
+            automaticallyImplyLeading: false,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             // 뉴스 이미지
             if (widget.article.imageUrl.isNotEmpty)
               ClipRRect(
@@ -315,15 +317,6 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
             ),
             const SizedBox(height: 12),
             _buildContentWithTerms(),
-
-            // 금융 용어 해설 섹션 (항상 표시)
-            const SizedBox(height: 24),
-            const Text(
-              "📚 금융 용어 해설",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _buildAllTermsExplanation(),
 
             const SizedBox(height: 24),
 
@@ -491,7 +484,17 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
           ],
         ),
       ),
-    );
+    ),
+    // 하단 고정 용어 해설 패널
+    if (_selectedTerm != null)
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        child: _buildBottomTermPanel(_selectedTerm!),
+      ),
+    ],
+  );
   }
 
   Widget _buildContentWithTerms() {
@@ -690,93 +693,106 @@ class _NewsDetailScreenState extends ConsumerState<NewsDetailScreen> {
     );
   }
 
-  // 모든 추출된 용어를 고정 섹션으로 표시
-  Widget _buildAllTermsExplanation() {
-    final terms = _scrapedTerms.isNotEmpty ? _scrapedTerms : widget.article.terms;
-
-    if (terms.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Text(
-            "이 뉴스에서 추출된 금융 용어가 없습니다.",
-            style: TextStyle(color: Colors.grey, fontSize: 14),
+  // 하단 고정 용어 해설 패널
+  Widget _buildBottomTermPanel(FinancialTermModel term) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
+        ],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
-      );
-    }
-
-    return Column(
-      children: terms.map((term) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.5,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.school,
-                    size: 18,
-                    color: AppTheme.primaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      term.term,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                term.definition,
-                style: const TextStyle(fontSize: 14, height: 1.5),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 헤더
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('💡 ', style: TextStyle(fontSize: 14)),
-                    Expanded(
-                      child: Text(
-                        term.example,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                          fontStyle: FontStyle.italic,
-                          height: 1.5,
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.school,
+                          size: 20,
+                          color: AppTheme.primaryColor,
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Text(
+                          term.term,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryColor,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 24),
+                      onPressed: () {
+                        setState(() {
+                          _selectedTerm = null;
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                // 정의
+                Text(
+                  term.definition,
+                  style: const TextStyle(fontSize: 15, height: 1.6),
+                ),
+                const SizedBox(height: 16),
+                // 예시
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('💡 ', style: TextStyle(fontSize: 16)),
+                      Expanded(
+                        child: Text(
+                          term.example,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                            fontStyle: FontStyle.italic,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      }).toList(),
+        ),
+      ),
     );
   }
 }

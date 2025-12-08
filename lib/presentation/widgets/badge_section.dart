@@ -202,52 +202,57 @@ class BadgeSection extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // 이모지 (잠금 해제 시 컬러, 잠금 시 흑백)
           Text(
             badge.emoji,
             style: TextStyle(
-              fontSize: 36,
+              fontSize: 32,
               color: isUnlocked ? null : Colors.grey,
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           // 제목
-          Text(
-            badge.title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: isUnlocked ? Colors.black87 : Colors.grey[600],
+          Flexible(
+            child: Text(
+              badge.title,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: isUnlocked ? Colors.black87 : Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
 
           // 설명
-          Text(
-            badge.description,
-            style: TextStyle(
-              fontSize: 10,
-              color: isUnlocked ? Colors.grey[700] : Colors.grey[500],
+          Flexible(
+            child: Text(
+              badge.description,
+              style: TextStyle(
+                fontSize: 9,
+                color: isUnlocked ? Colors.grey[700] : Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
 
           // 잠금 아이콘
           if (!isUnlocked)
             const Padding(
-              padding: EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: 2),
               child: Icon(
                 Icons.lock,
-                size: 16,
+                size: 14,
                 color: Colors.grey,
               ),
             ),
